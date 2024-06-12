@@ -1,17 +1,12 @@
-name: FOSSA License Compliance and Security Check
-
-on:
-  pull_request:
-    types:
-      - opened
-      - reopened
-      - synchronize
-
 jobs:
   fossa:
-    uses: liquibase/build-logic/.github/workflows/fossa_ai.yml@main
     secrets: inherit
+    uses: liquibase/build-logic/.github/workflows/fossa_ai.yml@main
     with:
-      check_snippets: true
       check_ai_generated_code: true
+      check_snippets: true
       generate_sbom: true
+name: FOSSA License Compliance and Security Check
+on:
+  repository_dispatch:
+    types: trigger-ga___fossa_ai.yml

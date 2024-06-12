@@ -1,70 +1,66 @@
-name: Run Test Harness Tests
-
-on:
-  workflow_call:
-    inputs:
-      latestMergeSha:
-        description: 'Latest Merge sha of OSS PR'
-        required: false
-        default: ''
-        type: string
-      thisBranchName:
-        description: 'Branch Name of OSS PR'
-        required: false
-        default: ''
-        type: string
-  pull_request:
-    types: [labeled]
-
 jobs:
-  test-harness-build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check runTestHarnessTests label
-        if: github.ref != 'refs/heads/master' && !contains(github.event.pull_request.labels.*.name, 'runTestHarnessTests')
-        run: |
-          echo "Add the runTestHarnessTests label to the PR to trigger the Test Harness Tests workflow."
-          exit 1
-
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha || github.event.after}} #sets the Git reference (commit or branch) to be checked out in the workflow
-
   run-test-harness-tests:
-    runs-on: ubuntu-latest
-    needs: [ test-harness-build ]
     name: Trigger Test Harness Tests
+    needs:
+    - test-harness-build
+    runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
+    - continue-on-error: true
+      uses: actions/checkout@v4
+    - continue-on-error: true
+      id: get-workflow-url
+      name: Get OSS Workflow Run URL
+      run: 'repo_url="https://github.com/${{ github.repository }}"
 
-      - name: Get OSS Workflow Run URL
-        id: get-workflow-url
-        run: |
-          repo_url="https://github.com/${{ github.repository }}"
-          ossWorkflowUrl="${repo_url}/actions/runs/${{ github.run_id }}"
-          echo "ossWorkflowUrl=${ossWorkflowUrl}" >> $GITHUB_ENV
+        ossWorkflowUrl="${repo_url}/actions/runs/${{ github.run_id }}"
 
-      - name: Dispatch an action and get the run ID
-        uses: codex-/return-dispatch@v1
-        id: return_dispatch
-        with:
-          token: ${{ secrets.RUN_FUNCTIONAL_TEST_HARNESS_TESTS_TOKEN  }}
-          ref: "develop"
-          repo: liquibase-test-harness
-          owner: liquibase
-          workflow: main.yml
-          workflow_inputs:
-            '{"liquibaseCommit": "${{ inputs.latestMergeSha }}",
-              "runDescription": "${{ env.ossWorkflowUrl }}",
-              "liquibaseBranch": "${{ inputs.thisBranchName }}"
-            }'
+        echo "ossWorkflowUrl=${ossWorkflowUrl}" >> $GITHUB_ENV
 
-      - name: Display run ID
-        run: echo ${{ steps.return_dispatch.outputs.run_id }}
+        '
+    - continue-on-error: true
+      id: return_dispatch
+      name: Dispatch an action and get the run ID
+      uses: codex-/return-dispatch@v1
+      with:
+        owner: liquibase
+        ref: develop
+        repo: liquibase-test-harness
+        token: ${{ secrets.RUN_FUNCTIONAL_TEST_HARNESS_TESTS_TOKEN  }}
+        workflow: main.yml
+        workflow_inputs: '{"liquibaseCommit": "${{ inputs.latestMergeSha }}", "runDescription":
+          "${{ env.ossWorkflowUrl }}", "liquibaseBranch": "${{ inputs.thisBranchName
+          }}" }'
+    - continue-on-error: true
+      name: Display run ID
+      run: echo ${{ steps.return_dispatch.outputs.run_id }}
+    - continue-on-error: true
+      name: Report TestHarness Run URL
+      uses: actions/github-script@v7
+      with:
+        script: 'const targetURL = "https://github.com/liquibase/liquibase-test-harness/actions/runs/${{
+          steps.return_dispatch.outputs.run_id }}"
 
-      - name: Report TestHarness Run URL
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const targetURL = "https://github.com/liquibase/liquibase-test-harness/actions/runs/${{ steps.return_dispatch.outputs.run_id }}"
-            core.notice("TestHarness-Tests Run URL: " + targetURL);
+          core.notice("TestHarness-Tests Run URL: " + targetURL);
+
+          '
+  test-harness-build:
+    runs-on: self-hosted
+    steps:
+    - continue-on-error: true
+      if: github.ref != 'refs/heads/master' && !contains(github.event.pull_request.labels.*.name,
+        'runTestHarnessTests')
+      name: Check runTestHarnessTests label
+      run: 'echo "Add the runTestHarnessTests label to the PR to trigger the Test
+        Harness Tests workflow."
+
+        exit 1
+
+        '
+    - continue-on-error: true
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.event.after}}
+name: Run Test Harness Tests
+on:
+  repository_dispatch:
+    types: trigger-ga___run-test-harness.yml

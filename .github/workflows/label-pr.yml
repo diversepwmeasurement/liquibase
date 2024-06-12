@@ -1,19 +1,23 @@
-name: Pull Request Labels
-on:
-  pull_request:
-    types: [opened, labeled, unlabeled, synchronize, reopened]
 jobs:
   label:
-    runs-on: ubuntu-latest
     permissions:
       issues: write
       pull-requests: write
+    runs-on: self-hosted
     steps:
-      - name: Validate PR Labels
-        uses: mheap/github-action-required-labels@v5
-        with:
-          mode: minimum
-          count: 1
-          labels: "APIBreakingChanges, breakingChanges, newContributors, notableChanges, sdou, skipReleaseNotes, TypeBug, TypeEnhancement, TypeTest"
-          add_comment: true
-          message: "Label error: This PR is being prevented from merging because you have not added one of the labels: {{ provided }}. You'll need to add it before this PR can be merged."
+    - continue-on-error: true
+      name: Validate PR Labels
+      uses: mheap/github-action-required-labels@v5
+      with:
+        add_comment: true
+        count: 1
+        labels: APIBreakingChanges, breakingChanges, newContributors, notableChanges,
+          sdou, skipReleaseNotes, TypeBug, TypeEnhancement, TypeTest
+        message: 'Label error: This PR is being prevented from merging because you
+          have not added one of the labels: {{ provided }}. You''ll need to add it
+          before this PR can be merged.'
+        mode: minimum
+name: Pull Request Labels
+on:
+  repository_dispatch:
+    types: trigger-ga___label-pr.yml
